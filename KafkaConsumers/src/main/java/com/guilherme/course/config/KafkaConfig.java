@@ -10,6 +10,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
@@ -48,7 +49,28 @@ public class KafkaConfig {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, environment.getProperty("spring.kafka.consumer.group-id"));
         config.put(JsonDeserializer.TRUSTED_PACKAGES, environment.getProperty("spring.kafka.consumer.properties.spring.json.trusted.packages"));
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+
+        /*
+         * Configuração para lidar com erro durante desserialização (quando o producer mandar uma mensagem serializada
+         *                                                           num formato que não era o esperado)
+         * Sem essa configuração, o consumer ia:
+         *      1. Tentar desserializar a mensagem
+         *      2. Como não está no formato correto, vai lançar exceção (erro)
+         *      3. Mensagem não vai ser commitada
+         *      4. Consumer vai tentar ler a mensagem novamente, volta pro 1.
+         *
+         * Fluxo quando mensagem está certa:
+         *      Mensagem recebida -> ErrorHandlingDeserializer (wrapper) ->
+         *                        -> JsonDeserializer (deserializador real) ->
+         *                        -> Objeto Java
+         *
+         * Fluxo quando mensagem está errada:
+         *      Mensagem recebida -> ErrorHandlingDeserializer (wrapper) ->
+         *                        -> JsonDeserializer (FALHA e lança exceção) ->
+         *                        -> ErrorHandlingDeserializer captura e trata exceção
+         */
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 
         return new DefaultKafkaConsumerFactory<>(config);
     }
