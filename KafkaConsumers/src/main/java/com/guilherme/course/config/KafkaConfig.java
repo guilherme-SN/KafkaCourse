@@ -1,5 +1,7 @@
 package com.guilherme.course.config;
 
+import com.guilherme.course.exceptions.NotRetryableException;
+import com.guilherme.course.exceptions.RetryableException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -16,6 +18,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -103,7 +106,14 @@ public class KafkaConfig {
          *
          * Ele faz isso usando o KafkaTemplate e por padrão o nome do tópico vai ser: [nome_original_do_topico]-dlt
          */
-        DefaultErrorHandler errorHandler = new DefaultErrorHandler(new DeadLetterPublishingRecoverer(kafkaTemplate));
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(
+                new DeadLetterPublishingRecoverer(kafkaTemplate),   // Para enviar pro DLT
+                new FixedBackOff(5000, 3)   // Para Retry. Nesse caso, tenta consumir de novo 3 vezes
+                                                                //  com um intervalo de 5s entre as tentativas
+        );
+
+        errorHandler.addNotRetryableExceptions(NotRetryableException.class);  // Se falhar, vai direto para o DLT
+        errorHandler.addRetryableExceptions(RetryableException.class);        // Se falhar, tenta reprocessar antes de ir para o DLT
 
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
 
