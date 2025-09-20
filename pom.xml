@@ -11,5 +11,6 @@
     <modules>
         <module>KafkaProducers</module>
         <module>KafkaConsumers</module>
+        <module>MockService</module>
     </modules>
 </project>
