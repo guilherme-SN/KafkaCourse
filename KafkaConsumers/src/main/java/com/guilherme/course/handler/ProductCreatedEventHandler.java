@@ -44,7 +44,7 @@ public class ProductCreatedEventHandler {
             // Outra solução é passar apenas um `ConsumerRecord<KeyType, ValueType> consumerRecord` no parâmetro,
             //  dessa forma, é possível acessar todos esses campos (headers, key, value, etc) pelo `consumerRecord`
     ) {
-        log.info("Receiving new event: {}", productCreatedEvent.title());
+        log.info("Receiving new event for {}, with messageId: {}", productCreatedEvent.title(), messageId);
 
         Optional<ProcessedEventEntity> optionalProcessedEvent = processedEventRepository.findByMessageId(messageId);
         if (optionalProcessedEvent.isPresent()) {
@@ -57,11 +57,11 @@ public class ProductCreatedEventHandler {
     }
 
     private void businessLogic(ProductCreatedEvent productCreatedEvent) {
-        log.info("Processing product logic with ID: {}", productCreatedEvent.productId());
+        log.info("Processing product logic with productId: {}", productCreatedEvent.productId());
 
         try {
             webClient.get()
-                    .uri("/response/500")
+                    .uri("/response/200")
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
