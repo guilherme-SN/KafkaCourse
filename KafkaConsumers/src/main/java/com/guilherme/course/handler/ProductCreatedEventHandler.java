@@ -1,18 +1,24 @@
 package com.guilherme.course.handler;
 
+import com.guilherme.course.entity.ProcessedEventEntity;
 import com.guilherme.course.events.ProductCreatedEvent;
 import com.guilherme.course.exceptions.NotRetryableException;
 import com.guilherme.course.exceptions.RetryableException;
+import com.guilherme.course.repository.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -26,7 +32,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 @KafkaListener(topics = { "product-created-events" })
 public class ProductCreatedEventHandler {
     private final WebClient webClient;
+    private final ProcessedEventRepository processedEventRepository;
 
+    @Transactional      // Faz com que o JPA trate as operações no banco de dados como transações
     @KafkaHandler
     public void handle(
             @Header(KafkaHeaders.RECEIVED_KEY) String messageKey,   // Captura a chave da mensagem recebida
@@ -37,7 +45,15 @@ public class ProductCreatedEventHandler {
             //  dessa forma, é possível acessar todos esses campos (headers, key, value, etc) pelo `consumerRecord`
     ) {
         log.info("Receiving new event: {}", productCreatedEvent.title());
+
+        Optional<ProcessedEventEntity> optionalProcessedEvent = processedEventRepository.findByMessageId(messageId);
+        if (optionalProcessedEvent.isPresent()) {
+            log.warn("Message already processed. Returning.");
+            return;
+        }
+
         this.businessLogic(productCreatedEvent);
+        this.saveEvent(messageId, productCreatedEvent);
     }
 
     private void businessLogic(ProductCreatedEvent productCreatedEvent) {
@@ -58,5 +74,23 @@ public class ProductCreatedEventHandler {
         }
 
         log.info("Finishing processing product with no errors");
+    }
+
+    private void saveEvent(String messageId, ProductCreatedEvent productCreatedEvent) {
+        log.info("Trying to save event to database");
+
+        try {
+            processedEventRepository.save(
+                    ProcessedEventEntity.builder()
+                            .messageId(messageId)
+                            .productId(productCreatedEvent.productId())
+                            .build()
+            );
+        } catch (DataIntegrityViolationException ex) {
+            log.error("[NOT RETRYABLE ERROR] while saving to database: {}", ex.getMessage());
+            throw new NotRetryableException(ex);
+        }
+
+        log.info("Event successfully saved to database");
     }
 }
