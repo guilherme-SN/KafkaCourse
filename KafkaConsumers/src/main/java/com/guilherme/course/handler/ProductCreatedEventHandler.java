@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -25,7 +28,14 @@ public class ProductCreatedEventHandler {
     private final WebClient webClient;
 
     @KafkaHandler
-    public void handle(ProductCreatedEvent productCreatedEvent) {
+    public void handle(
+            @Header(KafkaHeaders.RECEIVED_KEY) String messageKey,   // Captura a chave da mensagem recebida
+            @Header(value = "messageId") String messageId,          // Captura o header "messageId" da mensagem recebida
+            @Payload ProductCreatedEvent productCreatedEvent        // Captura o payload (conteúdo) da mensagem recebida
+
+            // Outra solução é passar apenas um `ConsumerRecord<KeyType, ValueType> consumerRecord` no parâmetro,
+            //  dessa forma, é possível acessar todos esses campos (headers, key, value, etc) pelo `consumerRecord`
+    ) {
         log.info("Receiving new event: {}", productCreatedEvent.title());
         this.businessLogic(productCreatedEvent);
     }

@@ -4,6 +4,7 @@ import com.guilherme.course.command.CreateProductCommand;
 import com.guilherme.course.events.ProductCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
@@ -32,10 +33,18 @@ public class ProductService {
                 command.quantity()
         );
 
+        ProducerRecord<String, ProductCreatedEvent> producerRecord = new ProducerRecord<>(
+                "product-created-events",
+                productId,
+                productCreatedEvent
+        );
+
+        // Dessa forma que envia Headers na mensagem
+        producerRecord.headers().add("messageId", UUID.randomUUID().toString().getBytes());
+
         // Faz o envio de forma assíncrona
         // SendResult<TipoDaChave, TipoDoValor> -> classe que encapsula resultado do envio de uma mensagem
-        CompletableFuture<SendResult<String, ProductCreatedEvent>> future =
-                kafkaTemplate.send("product-created-events", productId, productCreatedEvent);
+        CompletableFuture<SendResult<String, ProductCreatedEvent>> future = kafkaTemplate.send(producerRecord);
 
         // Callback que será executado quando a operação de cima finalizar
         future.whenComplete((result, exception) -> {
