@@ -12,5 +12,7 @@
         <module>KafkaProducers</module>
         <module>KafkaConsumers</module>
         <module>MockService</module>
+
+        <module>S15TransferService</module>
     </modules>
 </project>
