@@ -13,7 +13,9 @@
         <module>KafkaConsumers</module>
         <module>MockService</module>
 
+        <!-- Para a seção 15 do curso -->
         <module>S15TransferService</module>
         <module>S15WithdrawalService</module>
+        <module>S15DepositService</module>
     </modules>
 </project>

@@ -1,10 +1,9 @@
-package com.guilherme.course.withdrawalservice.config;
+package com.guilherme.course.depositservice.config;
 
-import com.guilherme.course.withdrawalservice.exceptions.NotRetryableException;
-import com.guilherme.course.withdrawalservice.exceptions.RetryableException;
+import com.guilherme.course.depositservice.exceptions.NotRetryableException;
+import com.guilherme.course.depositservice.exceptions.RetryableException;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +36,7 @@ public class KafkaConfig {
         Map<String, Object> config = new HashMap<>();
 
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -61,6 +60,7 @@ public class KafkaConfig {
 
         errorHandler.addRetryableExceptions(RetryableException.class);
         errorHandler.addNotRetryableExceptions(NotRetryableException.class);
+
         factory.setCommonErrorHandler(errorHandler);
 
         return factory;
