@@ -14,5 +14,6 @@
         <module>MockService</module>
 
         <module>S15TransferService</module>
+        <module>S15WithdrawalService</module>
     </modules>
 </project>
